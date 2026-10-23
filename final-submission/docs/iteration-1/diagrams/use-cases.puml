@@ -1,0 +1,128 @@
+@startuml
+!pragma layout smetana
+top to bottom direction
+title Appointment Tracking System — iteration 1 use-case model
+skinparam shadowing false
+skinparam packageStyle rectangle
+skinparam defaultFontSize 13
+skinparam nodesep 30
+skinparam ranksep 45
+skinparam usecase {
+  BackgroundColor White
+  BorderColor #475569
+  BackgroundColor<<critical>> #FDE8C8
+  BorderColor<<critical>> #9A4800
+  BackgroundColor<<subfunction>> #F1F5F9
+}
+
+actor Patient
+actor "Authorised clinic staff" as Staff
+actor "Administrative staff" as Admin
+actor "Healthcare professional" as Professional
+actor "Practice administrator" as Manager
+actor "Audit reviewer" as Reviewer
+Admin --|> Staff
+Professional --|> Staff
+Manager --|> Staff
+
+rectangle "Appointment Tracking System (ATS)\nFuture CLI; analysis boundary only" {
+  usecase "UC01 Manage Patient\nRegistration" as UC01
+  usecase "UC02 Search Patient" as UC02
+  usecase "UC03 Request Appointment" as UC03 <<critical>>
+  usecase "UC04 Confirm Appointment" as UC04
+  usecase "UC05 Reschedule Appointment" as UC05
+  usecase "UC06 Cancel Appointment" as UC06
+  usecase "UC07 Register Arrival" as UC07 <<critical>>
+  usecase "UC08 Conduct Consultation and\nRecord Clinical Information" as UC08 <<critical>>
+  usecase "UC09 View Clinical Record" as UC09
+  usecase "UC10 Issue Prescription" as UC10
+  usecase "UC11 Request Follow-up\nAppointment\n--\nExtension point: slot selection" as UC11
+  usecase "UC12 Issue Referral" as UC12
+  usecase "UC13 Update Referral Status" as UC13
+  usecase "UC14 Manage Professional\nProfile" as UC14
+  usecase "UC15 Manage Schedule" as UC15
+  usecase "UC16 Record Fees and\nGenerate Invoice" as UC16
+  usecase "UC17 Register Payment" as UC17
+  usecase "UC18 Review Audit Trail" as UC18
+  usecase "Search availability" as Availability <<subfunction>>
+  usecase "Validate scheduling constraints\n--\nExtension point: referral validation" as Validate <<subfunction>>
+  usecase "Check required referral" as ReferralCheck <<subfunction>>
+}
+
+Patient -- UC02
+Patient -- UC03
+Patient -- UC04
+Patient -- UC05
+Patient -- UC06
+Staff -- UC02
+Staff -- UC03
+Staff -- UC04
+Staff -- UC05
+Staff -- UC06
+Admin -- UC01
+Admin -- UC07
+Admin -- UC12 : external capture only
+Admin -- UC13 : permitted status fields
+Admin -- UC16
+Admin -- UC17
+Professional -- UC08
+Professional -- UC09
+Professional -- UC10
+Professional -- UC11
+Professional -- UC12 : issue / external capture
+Professional -- UC13
+Professional -- UC15 : own schedule within authority
+Admin -- UC14 : if profile-management permission
+Admin -- UC15 : if schedule-management permission
+Manager -- UC14
+Manager -- UC15
+Reviewer -- UC18
+
+UC03 ..> UC02 : <<include>>
+UC07 ..> UC02 : <<include>>
+UC03 ..> Availability : <<include>>
+UC05 ..> Availability : <<include>>
+Availability ..> UC11 : <<extend>>\n[new candidate times needed]
+UC03 ..> Validate : <<include>>
+UC05 ..> Validate : <<include>>
+UC11 ..> Validate : <<include>>
+ReferralCheck ..> Validate : <<extend>>\n[service requires referral]
+UC08 ..> UC09 : <<include>>
+UC10 ..> UC08 : <<extend>>\n[prescription indicated,\nafter consultation recorded]
+UC11 ..> UC08 : <<extend>>\n[follow-up indicated,\nafter consultation recorded]
+
+' Invisible layout guides do not represent use-case relationships.
+UC01 -[hidden]down-> UC03
+UC03 -[hidden]down-> UC04
+UC04 -[hidden]down-> UC05
+UC05 -[hidden]down-> UC06
+UC06 -[hidden]down-> UC07
+UC14 -[hidden]down-> UC15
+UC15 -[hidden]down-> UC16
+UC16 -[hidden]down-> UC17
+UC17 -[hidden]down-> UC18
+UC12 -[hidden]down-> UC13
+UC13 -[hidden]down-> UC11
+UC11 -[hidden]down-> UC10
+
+legend bottom left
+  |= Notation |= Meaning |
+  | <back:#FDE8C8> <<critical>> </back> | Only UC03, UC07, UC08; fully dressed + SSDs |
+  | White catalogue use case | Supporting / noncritical, NOT unimportant |
+  | <back:#F1F5F9> <<subfunction>> </back> | Reused system behaviour, not another user goal |
+  | <<include>> | Base always uses included behaviour in this analysed flow |
+  | <<extend>> [condition] | Conditional behaviour; arrow points to the extended base |
+  | Actor generalisation | Specialised actor inherits shared staff scheduling goals |
+  Notes:
+  Patients use own-patient lookup/appointments only; staff act within assigned scope.
+  Required-referral checking executes even if referralID is absent; missing/invalid rejects.
+  Voluntarily supplied referrals are also validated before linking.
+  UC08 extension point: after successful recording. UC10/UC11 are optional independent writes.
+  External referral authors are domain parties; authorised clinic users capture their referrals.
+  No electronic RAMQ, pharmacy or provincial integrations are implemented actors.
+  Clinical access requires care scope; successful writes, sensitive reads and denials are audited.
+  Audit records exclude clinical content. Practice-administrator/reviewer roles are assumption A10.
+  Source: project-requirements pages 1–4; provisional analysis decisions D1–D8.
+  Working assumptions, role limits and brief scenarios: ../scenarios.md.
+endlegend
+@enduml

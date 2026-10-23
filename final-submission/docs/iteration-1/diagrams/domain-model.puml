@@ -1,0 +1,304 @@
+@startuml
+!pragma layout smetana
+top to bottom direction
+title Appointment Tracking System — conceptual domain model
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+skinparam defaultFontSize 12
+skinparam nodesep 35
+skinparam ranksep 55
+hide methods
+hide circle
+
+' People and service catalogue
+  class Patient {
+    patientID
+    firstName
+    lastName
+    dateOfBirth
+    phone
+    contactDetails
+  }
+  class PatientInsurance {
+    kind: RAMQ / private
+    insurerName
+    insuranceNumber
+    validityDetails [optional]
+  }
+  class HealthcareProfessional {
+    professionalID
+    name
+    professionalInformation
+    professionalKind: family physician /
+      specialist physician / nurse / other
+    practiceKind: clinic / external
+  }
+  class Specialty {
+    specialtyID
+    name
+  }
+  class ClinicLocation {
+    locationID
+    name
+    address
+    phone
+    timeZone
+  }
+  class Service {
+    serviceID
+    name
+    durationMinutes > 0
+    requiresReferral
+    coveragePolicy
+    standardFee [optional]
+  }
+
+' Scheduling and encounters
+  class Schedule {
+    scheduleID
+  }
+  class AvailabilityPeriod {
+    weekday
+    localStartTime
+    localEndTime
+    effectiveFrom
+    effectiveTo
+  }
+  class Appointment {
+    appointmentID
+    startTime
+    bookedDurationMinutes
+    status: requested / confirmed /
+      completed / cancelled
+    arrivalTime [optional]
+  }
+  class ClinicalRecord {
+    clinicalRecordID
+  }
+  class Consultation {
+    consultationID
+    recordedAt
+    observations [optional]
+    diagnoses [optional]
+    treatmentRecommendations [optional]
+    followUpRequirements [optional]
+  }
+
+' Referral and prescribing
+  class Referral {
+    referralID
+    issuedAt
+    clinicalReason
+    priority
+    status
+  }
+  class Prescription {
+    prescriptionID
+    issuedAt
+  }
+  class PrescriptionItem {
+    dosage
+    instructions
+  }
+  class Medication {
+    medicationID
+    name
+    strength [optional]
+    form [optional]
+  }
+
+' Charges and recorded payments
+  class Fee {
+    feeID
+    description
+    amount
+    currency
+    coverageOutcome: uninsured
+    coverageBasis
+  }
+  class Invoice {
+    invoiceID
+    issuedAt
+    /total
+    /outstandingBalance
+    /status: unpaid / partiallyPaid / paid
+  }
+  class InvoiceLine {
+    description
+    quantity
+    chargedUnitAmount
+    currency
+    /lineTotal
+  }
+  class Payment {
+    paymentID
+    paidAt
+    amount
+    currency
+    method
+    reference [optional]
+  }
+
+' Conceptual access and accountability
+  class UserAccount {
+    accountID
+    accountStatus
+  }
+  class Role {
+    roleName
+    permissionScope
+  }
+  class AuditEvent {
+    eventID
+    occurredAt
+    action
+    targetType
+    targetID [optional]
+    outcome
+    safeReasonCode [optional]
+  }
+
+Patient "1" -- "0..*" PatientInsurance : holds >
+HealthcareProfessional "0..*" -- "0..*" Specialty : qualified in >
+HealthcareProfessional "0..*" -- "0..*" ClinicLocation : practises at >
+HealthcareProfessional "0..*" -- "0..*" Service : qualified to offer >
+Service "0..*" -- "0..*" Specialty : qualification requirements >
+
+HealthcareProfessional "1" -- "0..*" Schedule : has >
+Schedule "1" *-- "0..*" AvailabilityPeriod : contains >
+AvailabilityPeriod "0..*" --> "1" ClinicLocation : at
+AvailabilityPeriod "0..*" -- "1..*" Service : permits >
+Patient "1" -- "0..*" Appointment : attends >
+HealthcareProfessional "1" -- "0..*" Appointment : treats >
+ClinicLocation "1" -- "0..*" Appointment : hosts >
+Service "1" -- "0..*" Appointment : booked for <
+Patient "1" -- "1" ClinicalRecord : has >
+ClinicalRecord "1" -- "0..*" Consultation : contains >
+Appointment "1" -- "0..1" Consultation : documented by >
+HealthcareProfessional "1" -- "0..*" Consultation : records >
+Consultation "0..1" -- "0..*" Appointment : originates follow-ups >
+
+Patient "1" -- "0..*" Referral : subject of >
+HealthcareProfessional "1" -- "0..*" Referral : clinical author of >
+Referral "0..*" --> "0..1" Specialty : target specialty
+Referral "0..*" --> "0..1" HealthcareProfessional : target professional
+Referral "0..1" -- "0..*" Appointment : supports >
+Consultation "1" -- "0..*" Prescription : leads to >
+HealthcareProfessional "1" -- "0..*" Prescription : prescribes >
+Prescription "1" *-- "1..*" PrescriptionItem : contains >
+PrescriptionItem "0..*" --> "1" Medication : identifies
+
+Appointment "1" -- "0..*" Fee : assessed charges >
+Patient "1" -- "0..*" Invoice : billed by >
+Invoice "1" *-- "1..*" InvoiceLine : contains >
+InvoiceLine "0..1" --> "1" Fee : bills once
+Invoice "1" -- "0..*" Payment : settled by >
+
+UserAccount "0..1" -- "0..1" Patient : own-patient identity >
+UserAccount "0..1" -- "0..1" HealthcareProfessional : professional identity >
+UserAccount "0..*" -- "1..*" Role : assigned >
+UserAccount "1" -- "0..*" AuditEvent : accountable actor for >
+AuditEvent "0..*" --> "0..1" Patient : affected patient
+
+note top of ClinicLocation
+  Clinic practitioners have >= 1 practice location.
+  External referring professionals may have none,
+  and need no clinic schedule or user account.
+  Appointments/schedule periods use clinic practitioners
+  at their assigned practice locations.
+end note
+
+note top of Service
+  Service coveragePolicy: RAMQ-covered,
+  uninsured, or conditional (working vocabulary).
+  PatientInsurance is separate: being insured does
+  not make every booked service covered.
+  Duration and effective weekly availability are assumption A3.
+  Appointment duration is captured when reserved;
+  later catalogue edits cannot rewrite booked intervals.
+end note
+
+note bottom of Appointment
+  Requested and confirmed appointments reserve
+  [startTime, startTime + bookedDurationMinutes).
+  Recheck schedule and patient/professional overlap
+  across locations at request/reschedule time.
+  Rescheduling changes time, never adds a status.
+  Arrival is independent and requires confirmed
+  status on the appointment location's local date.
+  A successful follow-up is requested, reserves a
+  slot, and has an originating consultation link.
+end note
+
+note bottom of Consultation
+  Recording requires confirmed + arrived and
+  the authorised treating professional.
+  Create Consultation + ClinicalRecord association
+  + completed Appointment + audit together.
+  Appointment patient = ClinicalRecord patient;
+  recording professional = appointment professional.
+  At most one consultation per appointment (A7).
+end note
+
+note bottom of Referral
+  {target specialty OR target professional OR both}
+  At least one target must exist; both supplied
+  targets constrain the selected service/professional.
+  Appointment patient = referral patient.
+  Required/supplied referrals must be usable.
+  One referral may support many appointments.
+  External authorship is retained when authorised
+  clinic staff capture a referral (A8); the capturing
+  account is in AuditEvent, not substituted as author.
+  Status vocabulary/expiry remain open (A6).
+end note
+
+note bottom of PrescriptionItem
+  Each issued prescription has >= 1 item.
+  Every item requires medication, dosage,
+  instructions; prescribing authority is checked.
+  No electronic pharmacy delivery is modelled.
+end note
+
+note bottom of Invoice
+  Invoice patient = each billed fee's appointment patient.
+  An invoice can group charges from several appointments.
+  Each fee is assessed against one appointment and billed
+  at most once; lines preserve the charged amounts.
+  Fee retains manually assessed uninsured outcome and
+  administrative basis for this patient/service (O22).
+  Covered/undetermined assessments cannot create fees;
+  no electronic coverage adjudication is implied.
+  /outstandingBalance = /total - recorded payments.
+  Partial payments and one invoice per payment are A11.
+  No claims submission or payment gateway.
+end note
+
+note bottom of Role
+  Example roles: Patient; Administrative staff;
+  Healthcare professional; Practice administrator;
+  Audit reviewer (allocations A1/A10).
+  Permissions also require own-patient / care scope;
+  roles alone do not grant clinical access.
+  Staff registration/arrival access does not imply
+  access to clinical narratives or prescribing.
+end note
+
+note bottom of AuditEvent
+  Audit successful writes, sensitive reads and denials.
+  Keep actor, time, action, safe target IDs/outcome;
+  no clinical content, medication details, raw search
+  criteria, insurance numbers or request payloads.
+  Optional target/patient IDs allow denied unknown IDs.
+  Protect audit evidence; no ordinary-user rewriting (A12).
+end note
+
+legend bottom left
+  Conceptual entities and facts only: no controllers, repositories or infrastructure classes.
+  Association end multiplicities apply per instance at the opposite end.
+  Shared aggregation is avoided; composition marks owned line/period/item parts.
+  /attribute = derived value; [optional] = may be absent.
+  Source: project-requirements pages 2–3; provisional analysis decisions D2–D7.
+  A1–A12 label analyst assumptions explained in ../scenarios.md.
+endlegend
+@enduml
