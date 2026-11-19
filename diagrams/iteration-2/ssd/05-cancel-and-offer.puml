@@ -1,0 +1,50 @@
+@startuml
+title SSD 5 — Cancel Appointment and Offer Available Appointment
+hide footbox
+skinparam sequenceMessageAlign center
+actor "Patient / AdministrativeStaff" as Canceller
+actor AdministrativeStaff as Staff
+actor "Waitlisted Patient" as Patient
+participant ":System" as System
+Canceller -> System: cancelAppointment(appointmentID)
+alt cancellation rejected
+  System --> Canceller: notFound / accessDenied / invalidState
+else cancellation succeeds
+  System --> Canceller: appointmentID, status = cancelled
+  System --> Staff: eligible entries (entryID, patientID, criteria),\nhighest priority first (possibly empty)
+  loop priority order: while staff continues, slot available, and no successful booking
+    note over Staff,Patient
+    Staff selects the highest-priority eligible entry not yet contacted in this round.
+    Staff may choose among entries of equal priority; no automatic calling.
+    end note
+    Staff -> Patient: Offer available appointment by phone (outside software)
+    Patient --> Staff: Accept or decline
+    alt patient accepts
+      Staff -> System: requestAppointment(patientID, serviceID, professionalID,\nlocationID, dateTime, referralID?, waitingListEntryID = entryID)
+      alt booking and selected-entry validation succeed
+        System --> Staff: appointmentID, status = requested, entryID, entryStatus = accepted
+        note over Staff,System
+        Atomically book, link this exact entry, and mark it accepted.
+        Other matching entries are unchanged; stop this offer round.
+        end note
+      else availability changed or validation fails
+        System --> Staff: slotUnavailable / resourceUnavailable / referralRequired /\nreferralInvalid / invalidInput / notFound
+        note over Staff,System: No appointment or entry changes; stop if the slot is no longer available.
+      end
+    else patient declines
+      opt staff chooses to remove patient from waiting list
+        Staff -> System: removeWaitingListEntry(entryID)
+        System --> Staff: entryID, status = removed
+      end
+      note over Staff,System: Otherwise the patient stays on the waiting list and may receive a later offer.
+    end
+  end
+end
+note over Staff,System
+Cancellation frees appointment capacity and its allocated resources.
+The system identifies eligible entries using their preferences and priority.
+Declined entries not removed remain eligible for later offer rounds.
+A phone offer does not reserve capacity; acceptance uses normal booking validation.
+No offer IDs, hold/withdrawal workflow, automatic removal or new eligibility ban.
+end note
+@enduml

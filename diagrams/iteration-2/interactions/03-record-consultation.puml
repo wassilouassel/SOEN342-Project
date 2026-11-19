@@ -1,0 +1,51 @@
+@startuml
+title Interaction 3 — Record Consultation (UC08; design only)
+hide footbox
+skinparam sequenceMessageAlign center
+actor HealthcareProfessional as Professional
+boundary ":ClinicCLI" as UI
+control ":ConsultationController" as Controller
+control ":AccessPolicy" as Access
+entity ":AppointmentBook" as Book
+entity "a:Appointment" as Appointment
+entity ":ClinicalRecordCatalog" as Records
+entity "record:ClinicalRecord" as Record
+control ":UnitOfWork" as Tx
+entity ":AuditLog" as Audit
+Professional -> UI: Submit clinical information
+UI -> Controller: recordConsultation(appointmentID, observations, diagnoses,\ntreatmentRecommendations, followUpRequirements)
+Controller -> Book: get(appointmentID)
+Book --> Controller: a
+Controller -> Access: requireAssignedProfessionalAndCareScope(session, a)
+Controller -> Appointment: requireConfirmedAndArrivedWithoutConsultation()
+Controller -> Controller: validateAtLeastOneNonBlankClinicalField()
+Controller -> Records: getForPatient(a.patientID)
+Records --> Controller: record (or notFound)
+alt all checks pass
+  group atomic unit of work
+    Controller -> Tx: begin()
+    create entity "c:Consultation" as Consultation
+    Controller -> Consultation: create(uniqueID, clinical fields, appointmentID)
+    Controller -> Record: stageAdd(c)
+    Controller -> Appointment: stageComplete(c)
+    Controller -> Audit: stageRecord(actorID, patientID, recordConsultation, success)
+    Controller -> Tx: commit()
+  end
+  Controller --> UI: consultationID, appointmentStatus = completed
+  UI --> Professional: Consultation recorded
+  opt medication prescribed (separate operation and transaction)
+    ref over UI,Audit: issuePrescription(consultationID, items): validate prescribing authority and all items, then commit
+  end
+  opt follow-up needed (separate operation and transaction)
+    ref over UI,Audit: searchAvailability(...); requestFollowUp(...): derive patient from consultation, reuse booking + resource validation
+  end
+else validation or access check fails
+  Controller -> Audit: recordDeniedAttempt(actorID, patientID?, failureCode)
+  Controller --> UI: accessDenied / invalidState / invalidInput / notFound
+end
+note over Controller,Audit
+Audit/commit failure discards consultation, associations and completion together.
+Audit records contain no clinical content. Optional operation failures never undo c.
+Arrival and clinical workflow are design-only in this scheduling PoC.
+end note
+@enduml

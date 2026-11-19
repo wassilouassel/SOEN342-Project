@@ -1,0 +1,84 @@
+@startuml
+title Interaction 1 — Request Appointment (UC03; implemented PoC)
+hide footbox
+skinparam sequenceMessageAlign center
+actor AdministrativeStaff as Staff
+boundary "cli:Main" as UI
+control ":ClinicSystem" as System
+entity ":AvailabilityCatalog" as Catalog
+entity ":AppointmentBook" as Book
+entity "clock:Clock" as Clock
+Staff -> UI: Identify patient and choose service/professional/date range
+UI -> System: searchPatient(query)
+System --> UI: matching patients
+UI -> System: searchAvailability(serviceId, professionalId, from, to)
+System -> Catalog: slots()
+Catalog --> System: professional availability
+System -> Clock: instant()
+loop each matching slot
+  System -> System: filter by future start and full service duration
+  System -> Book: professionalAvailable(slot, serviceEnd)
+  Book --> System: available : boolean
+end
+System --> UI: available slots (advisory)
+UI --> Staff: Display slots; staff selects slotId
+Staff -> UI: Book selected slot for clinic/phone request
+UI -> System: requestAppointment(patientId, serviceId, slotId, channel, referralId)
+group serialized by synchronized ClinicSystem operation
+  System -> System: patient(patientId); service(serviceId)
+  break patient/service lookup fails
+    System --> UI: notFound; no state change
+    UI --> Staff: Show lookup error
+  end
+  System -> Catalog: slot(slotId)
+  Catalog --> System: slot (or notFound)
+  break slot lookup fails
+    System --> UI: notFound; no state change
+    UI --> Staff: Show lookup error
+  end
+  System -> Catalog: professional(slot.professionalId)
+  Catalog --> System: professional
+  System -> System: validate channel inline
+  System -> Clock: instant()
+  System -> System: validate future and full duration inline
+  break channel, future start or full-duration validation fails
+    System --> UI: invalidInput / slotUnavailable; no state change
+    UI --> Staff: Show validation error
+  end
+  System -> Book: professionalAvailable(slot, serviceEnd)
+  Book --> System: professionalAvailable : boolean
+  opt professional available
+    System -> Book: patientAvailable(patientId, start, serviceEnd)
+    Book --> System: patientAvailable : boolean
+  end
+  break professional or patient conflict
+    System --> UI: slotUnavailable; no state change
+    UI --> Staff: Show conflict; search again if needed
+  end
+  System -> System: validate referral existence, activity, patient and targets
+  alt referral validation fails
+    System --> UI: referralRequired / referralInvalid; no state change
+    UI --> Staff: Show referral error
+  else facade validation passes
+    System -> Book: reserve(patient, service, slot, LOCATION, channel, referralId)
+    Book -> Book: recheck professionalAvailable() and patientAvailable()
+    alt defensive ledger recheck fails
+      Book --> System: slotUnavailable; no state change
+      System --> UI: slotUnavailable
+      UI --> Staff: Show conflict
+    else ledger checks pass
+      create entity "a:Appointment" as Appointment
+      Book -> Appointment: create(uniqueID, patient, service, slot,\nstatus=requested, requestedBy=staff, channel)
+      Book -> Book: store(a)
+      Book --> System: a
+      System --> UI: appointmentID, status = requested
+      UI --> Staff: Request recorded (not confirmed)
+    end
+  end
+end
+note over System,Book
+PoC simplifies O03: slotId supplies professional/location/dateTime; one clinic.
+Resources, waitingListEntryID and real auth/audit are NOT implemented here.
+Their analysis contracts are deferred; this diagram traces the existing Java subset.
+end note
+@enduml

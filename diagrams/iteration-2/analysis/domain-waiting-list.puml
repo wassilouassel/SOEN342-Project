@@ -1,0 +1,33 @@
+@startuml
+!define WAITING_VIEW
+!include domain-model.puml
+title Domain Model — Waiting Lists (focused view)
+caption Only waiting-list associations are shown; other scheduling links remain in the overview.
+left to right direction
+skinparam nodesep 35
+skinparam ranksep 45
+hide members
+show "Waiting lists.WaitingListEntry" members
+remove $ResourcesGroup
+remove $ClinicalGroup
+remove $BillingGroup
+remove $SystemUser
+remove $HealthcareProfessional
+remove $ExternalProfessional
+remove $Schedule
+remove $Resource
+remove $ExaminationRoom
+remove $MedicalEquipment
+remove $AssistingStaffRole
+remove $ResourceRequirement
+remove $ResourceAllocation
+remove $ClinicalRecord
+remove $Consultation
+remove $Prescription
+remove $PrescriptionItem
+remove $Medication
+remove $Fee
+remove $Invoice
+remove $Payment
+remove $AuditRecord
+@enduml

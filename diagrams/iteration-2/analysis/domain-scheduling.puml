@@ -1,0 +1,26 @@
+@startuml
+!include domain-model.puml
+title Domain Model — People, Scheduling and Referrals (focused view)
+remove $WaitingGroup
+remove $ResourcesGroup
+remove $ClinicalGroup
+remove $BillingGroup
+remove $SystemUser
+remove $WaitingList
+remove $WaitingListEntry
+remove $Resource
+remove $ExaminationRoom
+remove $MedicalEquipment
+remove $AssistingStaffRole
+remove $ResourceRequirement
+remove $ResourceAllocation
+remove $ClinicalRecord
+remove $Consultation
+remove $Prescription
+remove $PrescriptionItem
+remove $Medication
+remove $Fee
+remove $Invoice
+remove $Payment
+remove $AuditRecord
+@enduml

@@ -1,0 +1,45 @@
+@startuml
+title SSD 3 — Conduct Consultation and Record Clinical Information (UC08)
+hide footbox
+skinparam sequenceMessageAlign center
+actor HealthcareProfessional as Professional
+participant ":System" as System
+Professional -> System: recordConsultation(appointmentID, observations, diagnoses,\ntreatmentRecommendations, followUpRequirements)
+alt not authorised, not found, not confirmed/arrived, duplicate, or invalid content
+  System --> Professional: accessDenied / notFound / invalidState / invalidInput
+else audit or commit fails
+  System --> Professional: auditUnavailable / systemError
+else consultation recorded
+  System --> Professional: consultationID, appointmentStatus = completed
+  opt medication prescribed
+    Professional -> System: issuePrescription(consultationID, items)
+    alt valid prescribing authority and medication items; commit succeeds
+      System --> Professional: prescriptionID
+    else rejected or failed
+      System --> Professional: accessDenied / invalidInput / notFound / auditUnavailable / systemError
+    end
+  end
+  opt follow-up required
+    Professional -> System: searchAvailability(serviceID, professionalID?, locationID?, dateRange, specialtyID?)
+    alt no eligible slots
+      System --> Professional: [] — No availability
+      note over Professional,System
+      No follow-up is booked. Staff/patient may separately join the waiting list.
+      end note
+    else eligible slots exist
+      System --> Professional: slots (professionalID, dateTime, locationID)
+      Professional -> System: requestFollowUp(consultationID, serviceID, professionalID,\nlocationID, dateTime, referralID?)
+      alt all checks including resource allocation pass
+        System --> Professional: appointmentID, status = requested
+      else rejected or failed
+        System --> Professional: slotUnavailable / resourceUnavailable / referralRequired /\nreferralInvalid / accessDenied / notFound / invalidInput / auditUnavailable / systemError
+      end
+    end
+  end
+end
+note over Professional,System
+Patient is derived from consultationID, never supplied by the caller.
+Prescription/follow-up failure does not undo the recorded consultation.
+Follow-up is not automatically confirmed.
+end note
+@enduml

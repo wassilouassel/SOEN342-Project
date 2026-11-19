@@ -1,0 +1,158 @@
+' Shared presentation, case definitions and semantic links for the Iteration II views.
+' Keep aliases and critical markings identical across overview and focused views.
+!pragma layout smetana
+left to right direction
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam nodesep 28
+skinparam ranksep 50
+skinparam defaultFontSize 12
+skinparam ArrowFontSize 11
+skinparam actorStyle stickman
+
+legend bottom left
+  <<critical>> = critical use case
+  Unmarked = non-critical use case
+  Dashed arrows retain the original <<include>> / <<extend>> relationships.
+endlegend
+
+!procedure $searchPatientCase()
+  usecase "Search Patient" as SearchPatient
+!endprocedure
+
+!procedure $supportCases()
+  $searchPatientCase()
+  usecase "Search Availability" as Search
+  usecase "Validate Scheduling\nConstraints" as Validate
+  usecase "Validate Referral" as ReferralCheck
+  usecase "Allocate Resources" as Allocate
+!endprocedure
+
+!procedure $schedulingCases()
+  usecase "Request Appointment\n(UC03)" as Request <<critical>>
+  usecase "Confirm Appointment" as Confirm
+  usecase "Reschedule Appointment" as Reschedule
+  usecase "Cancel Appointment" as Cancel
+  usecase "Add Patient to\nWaiting List" as Join <<critical>>
+  usecase "Manage Waiting List\n(priority and removal)" as ManageList
+  usecase "Offer Available Appointment\nto Waiting Patient" as Offer
+!endprocedure
+
+!procedure $clinicalCases()
+  usecase "Conduct Consultation and\nRecord Clinical Information (UC08)" as Consultation <<critical>>
+  usecase "View Patient\nClinical Record" as ViewRecord
+  usecase "Issue Prescription" as Prescription
+  usecase "Request Follow-up\nAppointment" as FollowUp
+  usecase "Issue Referral" as Referral
+  usecase "Update Referral Status" as ReferralStatus
+!endprocedure
+
+!procedure $registrationAndBillingCases()
+  usecase "Manage Patient\nRegistration" as Register
+  usecase "Register Patient Arrival\n(UC07)" as Arrival <<critical>>
+  usecase "Generate Invoice" as Invoice
+  usecase "Register Payment" as Payment
+!endprocedure
+
+!procedure $professionalAndResourceCases()
+  usecase "Manage Professional" as ManageProfessional <<critical>>
+  usecase "Manage Healthcare\nProfessional Profile" as Profile
+  usecase "Make Availability" as Make
+  usecase "Import Availability\nfrom CSV" as Import
+  usecase "Export Availability\nto CSV" as Export
+  usecase "Manage Resources" as ManageResources
+!endprocedure
+
+!procedure $administrationCases()
+  $registrationAndBillingCases()
+  $professionalAndResourceCases()
+!endprocedure
+
+!procedure $schedulingAssociations()
+Patient -right- Request
+Patient -right- Join
+Staff -right- Request
+Staff -right- Search
+Staff -right- Confirm
+Staff -right- Reschedule
+Staff -right- Cancel
+Staff -right- Join
+Staff -right- ManageList
+Staff -right- Offer
+!endprocedure
+
+!procedure $clinicalAssociations()
+Professional -right- Consultation
+Professional -right- ViewRecord
+Professional -right- Prescription
+Professional -right- FollowUp
+Professional -right- Referral
+Professional -right- ReferralStatus
+!endprocedure
+
+!procedure $administrationAssociations()
+Staff -right- Register
+Staff -right- SearchPatient
+Staff -right- Arrival
+Staff -right- ManageProfessional
+Staff -right- Profile
+Staff -right- Make
+Staff -right- Import
+Staff -right- Export
+Staff -right- ManageResources
+Staff -right- Invoice
+Staff -right- Payment
+!endprocedure
+
+!procedure $schedulingRelationships()
+Request ..> SearchPatient : <<include>>
+Request ..> Search : <<include>>
+Request ..> Validate : <<include>>
+Request ..> Allocate : <<include>>
+Reschedule ..> Search : <<include>>
+Reschedule ..> Validate : <<include>>
+Reschedule ..> Allocate : <<include>>
+Join ..> SearchPatient : <<include>>
+Join ..> Search : <<include>>
+Join ..> Request : <<extend>>\n[no appointment slots available]
+Offer ..> Cancel : <<extend>>\n[eligible waiting patients exist]
+!endprocedure
+
+!procedure $clinicalRelationships()
+ViewRecord ..> SearchPatient : <<include>>
+Prescription ..> Consultation : <<extend>>\n[medication prescribed]
+FollowUp ..> Consultation : <<extend>>\n[follow-up required]
+FollowUp ..> Search : <<include>>
+FollowUp ..> Validate : <<include>>
+FollowUp ..> Allocate : <<include>>
+!endprocedure
+
+!procedure $administrationRelationships()
+Arrival ..> SearchPatient : <<include>>
+Invoice ..> SearchPatient : <<include>>
+!endprocedure
+
+!procedure $referralRelationship()
+ReferralCheck ..> Validate : <<extend>>\n[referral required or supplied]
+!endprocedure
+
+!procedure $waitingListNote()
+note bottom of Offer
+After cancellation, the system identifies
+eligible patients in priority order
+(highest priority first).
+Staff offers an appointment by phone;
+acceptance uses normal booking.
+Decline does not automatically remove
+the patient from the waiting list.
+end note
+!endprocedure
+
+!procedure $resourceNote()
+note bottom of Allocate
+Use predefined rooms, equipment
+and assisting roles.
+Human resources are roles,
+not specific personnel.
+end note
+!endprocedure

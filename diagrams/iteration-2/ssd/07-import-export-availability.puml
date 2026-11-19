@@ -1,0 +1,30 @@
+@startuml
+title SSD 7 — Import and Export Availability CSV
+hide footbox
+skinparam sequenceMessageAlign center
+actor AdministrativeStaff as Staff
+participant ":System" as System
+note over Staff,System: PoC starts empty; no database is loaded automatically.
+Staff -> System: importAvailability(sourcePath)
+alt unreadable file, invalid header/row, duplicate interval, or overlapping availability
+  System --> Staff: importRejected, row/error details (no changes)
+else all rows valid
+  System --> Staff: imported slot count, professional count
+end
+note over Staff,System
+UTF-8 CSV headers: First Name, Last Name, Title, Specialty, Date, Start, End.
+Imports create/reuse professionals and explicit availability slots.
+They do not create patients, bookings, resources or waiting-list entries.
+end note
+Staff -> System: exportAvailability(destinationPath)
+alt destination cannot be written
+  System --> Staff: exportFailed (domain unchanged)
+else file written
+  System --> Staff: exported slot count
+end
+note over Staff,System
+Export includes the entire availability dataset, not only free slots.
+This is an availability interchange, not a complete booking/patient backup.
+The sample schema contains no booking-status or resource-allocation columns.
+end note
+@enduml

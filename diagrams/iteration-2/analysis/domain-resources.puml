@@ -1,0 +1,28 @@
+@startuml
+!include domain-model.puml
+title Domain Model — Resource Quantities and Capacity (focused view)
+remove $WaitingGroup
+remove $ClinicalGroup
+remove $BillingGroup
+remove $SystemUser
+remove $Patient
+remove $AdministrativeStaff
+remove $HealthcareProfessional
+remove $ClinicProfessional
+remove $ExternalProfessional
+remove $Specialty
+remove $Schedule
+remove $AvailabilitySlot
+remove $Referral
+remove $WaitingList
+remove $WaitingListEntry
+remove $ClinicalRecord
+remove $Consultation
+remove $Prescription
+remove $PrescriptionItem
+remove $Medication
+remove $Fee
+remove $Invoice
+remove $Payment
+remove $AuditRecord
+@enduml

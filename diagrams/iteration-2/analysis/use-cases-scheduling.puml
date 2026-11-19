@@ -1,0 +1,21 @@
+@startuml
+!include use-cases-shared.iuml
+title Appointment Tracking System — Iteration II\nAppointments and waiting list
+caption Focused view 1 of 3. Shared cases are repeated for context;\nuse-cases.puml retains the complete system and every association.
+
+actor Patient
+actor AdministrativeStaff as Staff
+Patient -[hidden]down- Staff
+
+rectangle "Appointment Tracking System" {
+  $schedulingCases()
+  $supportCases()
+}
+
+$schedulingAssociations()
+Staff -right- SearchPatient
+$schedulingRelationships()
+$referralRelationship()
+$waitingListNote()
+$resourceNote()
+@enduml

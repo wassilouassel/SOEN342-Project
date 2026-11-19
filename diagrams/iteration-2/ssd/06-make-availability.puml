@@ -1,0 +1,24 @@
+@startuml
+title SSD 6 — Make Availability
+hide footbox
+skinparam sequenceMessageAlign center
+actor AdministrativeStaff as Staff
+participant ":System" as System
+Staff -> System: makeAvailability(professionalID, locationID, dateRange,\nrecurrence, startTime, endTime, slotMinutes)
+note over Staff,System
+recurrence = weekly(set of weekdays) or monthly(dayOfMonth).
+Date bounds are inclusive. A missing monthly day (e.g. Feb 31) is skipped.
+end note
+alt professional/location missing, malformed pattern, or invalid time/slot length
+  System --> Staff: notFound / invalidInput
+else generated interval overlaps existing availability
+  System --> Staff: duplicateAvailability (no partial creation)
+else valid pattern and all generated intervals are conflict-free
+  System --> Staff: scheduleID, created slot IDs (possibly empty if no occurrence)
+end
+note over Staff,System
+Whole slots only; the daily interval must divide exactly by slotMinutes.
+Example: November 2026, weekly Mondays, 09:00–12:00, slotMinutes = 30.
+Creating professional availability does not reserve rooms, equipment or assisting roles.
+end note
+@enduml
