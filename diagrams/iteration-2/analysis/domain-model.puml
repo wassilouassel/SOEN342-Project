@@ -1,0 +1,261 @@
+@startuml
+!pragma layout smetana
+title Appointment Tracking System — Updated UML Domain Model
+skinparam classAttributeIconSize 0
+hide empty members
+package "People and clinic" $PeopleGroup {
+  class SystemUser $SystemUser {
+    userID
+    role
+  }
+  class Patient $Patient {
+    patientID
+    firstName
+    lastName
+    dateOfBirth
+    phoneNumber
+    coverageType [0..1]
+    healthInsuranceNumber [0..1]
+    insuranceProvider [0..1]
+  }
+  class AdministrativeStaff $AdministrativeStaff {
+    staffID
+    name
+  }
+  class HealthcareProfessional $HealthcareProfessional {
+    professionalID
+    name
+    licenseNumber
+    professionalType
+  }
+  class ClinicProfessional $ClinicProfessional
+  class ExternalProfessional $ExternalProfessional {
+    organizationName
+    phoneNumber
+  }
+  class Specialty $Specialty {
+    specialtyID
+    name
+  }
+  class ClinicLocation $ClinicLocation {
+    locationID
+    name
+    address
+    phoneNumber
+  }
+}
+package "Appointments and availability" $SchedulingGroup {
+  class MedicalService $MedicalService {
+    serviceID
+    name
+    durationMinutes
+    requiresReferral
+    coveredByRAMQ
+    standardFee [0..1]
+  }
+  class Schedule $Schedule {
+    scheduleID
+    daysOfWeek
+    startTime
+    endTime
+    effectiveFrom
+    effectiveTo
+    repetitionPattern
+    monthlyDay [0..1]
+  }
+  class AvailabilitySlot $AvailabilitySlot {
+    slotID
+    date
+    startTime
+    endTime
+    status : available / booked / blocked
+  }
+  class Appointment $Appointment {
+    appointmentID
+    dateTime
+    /endTime
+    status : requested / confirmed / rescheduled / cancelled / completed
+    requestedBy : patient / staff
+    arrivalTime [0..1]
+  }
+  class Referral $Referral {
+    referralID
+    issueDate
+    clinicalReason
+    priority
+    status
+  }
+}
+package "Waiting lists" $WaitingGroup {
+  class WaitingList $WaitingList {
+    waitingListID
+    createdDate
+  }
+  class WaitingListEntry $WaitingListEntry {
+    entryID
+    requestDate
+    preferredStartDate [0..1]
+    preferredEndDate [0..1]
+    priorityRank
+    status : waiting / offered / accepted / declined / removed
+    declineCount
+  }
+}
+package "Predefined resources" $ResourcesGroup {
+  abstract class Resource $Resource {
+    resourceID
+    name
+    status : available / in-use / maintenance
+    capacity : positive integer
+  }
+  class ExaminationRoom $ExaminationRoom {
+    roomNumber
+    floor
+  }
+  class MedicalEquipment $MedicalEquipment {
+    equipmentType
+    serialNumber
+  }
+  class AssistingStaffRole $AssistingStaffRole {
+    roleType : nurse / medical assistant
+  }
+  class ResourceRequirement $ResourceRequirement {
+    quantityRequired : positive integer
+  }
+  class ResourceAllocation $ResourceAllocation {
+    quantityAllocated : positive integer
+  }
+}
+package "Clinical information" $ClinicalGroup {
+  class ClinicalRecord $ClinicalRecord {
+    recordID
+    creationDate
+  }
+  class Consultation $Consultation {
+    consultationID
+    observations
+    diagnoses
+    treatmentRecommendations
+    followUpRequirements
+  }
+  class Prescription $Prescription {
+    prescriptionID
+    issueDate
+  }
+  class PrescriptionItem $PrescriptionItem {
+    dosage
+    instructions
+  }
+  class Medication $Medication {
+    medicationID
+    name
+    form
+  }
+}
+package "Billing and audit (existing scope)" $BillingGroup {
+  class Fee $Fee {
+    feeID
+    description
+    amount
+  }
+  class Invoice $Invoice {
+    invoiceID
+    issueDate
+    totalAmount
+    status
+  }
+  class Payment $Payment {
+    paymentID
+    amountPaid
+    paymentDate
+    paymentMethod
+  }
+  class AuditRecord $AuditRecord {
+    auditID
+    occurredAt
+    action
+    outcome
+  }
+}
+!ifndef WAITING_VIEW
+HealthcareProfessional <|-- ClinicProfessional
+HealthcareProfessional <|-- ExternalProfessional
+SystemUser "0..1" -- "0..1" Patient : identifies
+SystemUser "0..1" -- "0..1" AdministrativeStaff : identifies
+SystemUser "0..1" -- "0..1" HealthcareProfessional : identifies
+HealthcareProfessional "0..*" -- "1..*" Specialty : specializes in
+ClinicProfessional "0..*" -- "1..*" ClinicLocation : practises at
+ClinicProfessional "1" -- "0..*" Schedule : follows
+Schedule "0..*" -- "1" ClinicLocation : applies to
+Schedule "0..1" -- "0..*" AvailabilitySlot : generates
+ClinicProfessional "1" -- "0..*" AvailabilitySlot : offers
+ClinicLocation "1" -- "0..*" AvailabilitySlot : takes place at
+Patient "1" -- "0..*" Appointment : books
+ClinicProfessional "1" -- "0..*" Appointment : conducts
+ClinicLocation "1" -- "0..*" Appointment : hosts
+MedicalService "1" -- "0..*" Appointment : service of
+ClinicProfessional "0..*" -- "0..*" MedicalService : offers
+AvailabilitySlot "1" -- "0..*" Appointment : booked through
+AdministrativeStaff "0..1" -- "0..*" Appointment : registers arrival of
+HealthcareProfessional "1" -- "0..*" Referral : issues
+Patient "1" -- "0..*" Referral : subject of
+Referral "0..*" -- "0..1" ClinicProfessional : targets professional
+Referral "0..*" -- "0..1" Specialty : targets specialty
+Referral "0..1" -- "0..*" Appointment : leads to
+!endif
+WaitingList "1" *-- "0..*" WaitingListEntry : contains
+MedicalService "1" -- "0..*" WaitingList : defines
+Patient "1" -- "0..*" WaitingListEntry : placed on
+MedicalService "1" -- "0..*" WaitingListEntry : requested for
+ClinicLocation "1" -- "0..*" WaitingListEntry : requested at
+WaitingListEntry "0..*" -- "0..1" ClinicProfessional : requested professional
+WaitingListEntry "0..*" -- "0..1" Specialty : requested specialty
+WaitingListEntry "0..*" -- "0..1" Referral : uses
+AdministrativeStaff "0..*" -- "0..*" WaitingListEntry : manages
+WaitingListEntry "0..*" -- "0..1" AvailabilitySlot : offered
+WaitingListEntry "0..1" -- "0..1" Appointment : fills from
+Resource <|-- ExaminationRoom
+Resource <|-- MedicalEquipment
+Resource <|-- AssistingStaffRole
+ClinicLocation "1" -- "0..*" Resource : houses
+MedicalService "1" *-- "0..*" ResourceRequirement : requires
+ResourceRequirement "0..*" -- "1" Resource : specifies
+Appointment "1" *-- "0..*" ResourceAllocation : allocates
+ResourceAllocation "0..*" -- "1" Resource : uses
+Patient "1" -- "1" ClinicalRecord : has record
+ClinicalRecord "1" -- "0..*" Consultation : contains
+Appointment "1" -- "0..1" Consultation : results in
+Consultation "0..1" -- "0..*" Appointment : followed up by
+Consultation "1" -- "0..*" Prescription : yields
+ClinicProfessional "1" -- "0..*" Prescription : prescribes
+Prescription "1" *-- "1..*" PrescriptionItem : lists
+PrescriptionItem "0..*" -- "1" Medication : refers to
+Patient "1" -- "0..*" Invoice : receives
+Invoice "0..1" -- "1..*" Fee : bills
+Appointment "0..1" -- "0..*" Fee : incurs
+Invoice "1" -- "0..*" Payment : settled by
+AuditRecord "0..*" -- "1" SystemUser : performed by
+AuditRecord "0..*" -- "0..1" Patient : concerns
+note bottom of WaitingListEntry
+Preferences: professional, specialty or date range.
+Staff edits priority; offers follow highest priority first.
+Booking names the exact entry; other entries are unchanged.
+Decline alone does not remove or exclude the patient.
+An offer records contact, not a capacity reservation.
+end note
+note bottom of Resource
+Resources are predefined; assisting roles are capacity pools, not named personnel.
+Specific rooms/equipment have capacity 1; a role pool has its predefined capacity.
+Each allocation equals the service requirement quantity for that resource.
+At every instant, total active allocated quantity must not exceed capacity.
+Unavailable/maintenance resources cannot be allocated.
+Two specific rooms: two requirements of 1; two nurses: one role requirement of 2.
+end note
+!ifndef WAITING_VIEW
+note bottom of AvailabilitySlot
+Generated from a schedule or imported as one-off availability.
+Cancelled appointments remain history;
+only active bookings consume capacity.
+end note
+!endif
+@enduml

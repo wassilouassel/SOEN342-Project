@@ -1,0 +1,20 @@
+@startuml
+!include use-cases-shared.iuml
+title Appointment Tracking System — Iteration II\nRegistration, administration and billing
+caption Focused view 3 of 3. Search Patient is repeated for context;\nuse-cases.puml retains the complete system and every association.
+
+actor AdministrativeStaff as Staff
+
+rectangle "Appointment Tracking System" {
+  package "Registration, arrival and billing" {
+    $registrationAndBillingCases()
+    $searchPatientCase()
+  }
+  package "Professional, availability and resource administration" {
+    $professionalAndResourceCases()
+  }
+}
+
+$administrationAssociations()
+$administrationRelationships()
+@enduml

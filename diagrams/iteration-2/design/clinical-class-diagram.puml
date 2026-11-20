@@ -1,0 +1,104 @@
+@startuml
+!pragma layout smetana
+title Partial Design — Register Arrival and Record Consultation (design only)
+skinparam classAttributeIconSize 0
+hide empty members
+class ClinicCLI <<boundary>>
+class ArrivalController <<controller>> {
+  +registerArrival(appointmentID)
+}
+class ConsultationController <<controller>> {
+  +recordConsultation(appointmentID, observations, diagnoses, recommendations, followUp)
+  -validateAtLeastOneNonBlankClinicalField()
+}
+class AccessPolicy {
+  +requireRole(session, role)
+  +requireAssignedProfessionalAndCareScope(session, appointment)
+}
+class AppointmentBook {
+  +get(appointmentID) : Appointment
+}
+class Appointment {
+  appointmentID : String
+  patientID : String
+  location : ClinicLocation
+  dateTime : LocalDateTime
+  status
+  arrivalTime [0..1]
+  +requireConfirmed()
+  +requireDate(clinicDate)
+  +requireNotArrived()
+  +requireConfirmedAndArrivedWithoutConsultation()
+  +stageArrival(arrivalTime, staffID)
+  +stageComplete(consultation)
+}
+class ClinicLocation {
+  locationID : String
+  timeZone : ZoneId
+}
+class ClinicClock {
+  +todayAt(location)
+  +nowAt(location)
+}
+class ClinicalRecordCatalog {
+  +getForPatient(patientID : String) : ClinicalRecord
+}
+class ClinicalRecord {
+  recordID : String
+  patientID : String
+  +stageAdd(consultation : Consultation)
+}
+class Consultation {
+  consultationID
+  observations
+  diagnoses
+  treatmentRecommendations
+  followUpRequirements
+  +create(uniqueID, clinicalFields, appointmentID)
+}
+class UnitOfWork {
+  +begin()
+  +commit()
+}
+class AuditLog {
+  +stageRecord(actorID, patientID, action, outcome)
+  +recordDeniedAttempt(actorID, patientID, failureCode)
+}
+class AuditRecord {
+  auditID
+  occurredAt
+  action
+  outcome
+}
+ClinicCLI --> ArrivalController
+ClinicCLI --> ConsultationController
+ArrivalController --> AppointmentBook
+ArrivalController --> AccessPolicy
+ArrivalController --> ClinicClock
+ArrivalController --> UnitOfWork
+ArrivalController --> AuditLog
+ConsultationController --> AppointmentBook
+ConsultationController --> AccessPolicy
+ConsultationController --> ClinicalRecordCatalog
+ConsultationController --> ClinicalRecord
+ClinicalRecordCatalog o-- "0..*" ClinicalRecord
+Appointment --> "1" ClinicLocation : takes place at
+ConsultationController --> Consultation : creates
+ConsultationController --> UnitOfWork
+ConsultationController --> AuditLog
+AppointmentBook o-- "0..*" Appointment
+Appointment "1" -- "0..1" Consultation : results in
+ClinicalRecord "1" -- "0..*" Consultation : contains
+AuditLog o-- "0..*" AuditRecord
+note bottom of UnitOfWork
+Staged domain changes and success audit are committed together.
+Failure discards all staged changes (original contracts CR1/CR2).
+This describes in-memory atomicity, not a required database implementation.
+end note
+note bottom of Appointment
+These are the target design classes used by interactions 2 and 3.
+They extend the scheduling design; they are not implemented by the PoC.
+Arrival stays confirmed; recording consultation changes status to completed.
+Existing Appointment, ClinicalRecord, Consultation and AuditRecord concepts are retained.
+end note
+@enduml

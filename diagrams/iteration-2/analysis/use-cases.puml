@@ -1,0 +1,38 @@
+@startuml
+!include use-cases-shared.iuml
+title Appointment Tracking System — Iteration II\nComplete use-case overview
+caption All original actors, cases and semantic links are retained.\nFor normal-page reading, use the three focused use-cases-*.puml views.
+
+actor Patient
+actor AdministrativeStaff as Staff
+actor HealthcareProfessional as Professional
+Patient -[hidden]down- Staff
+Staff -[hidden]down- Professional
+
+rectangle "Appointment Tracking System" {
+  package "Appointments and waiting list" as Scheduling {
+    $schedulingCases()
+  }
+  package "Shared patient and scheduling services" as Support {
+    $supportCases()
+  }
+  package "Consultation and clinical records" as Clinical {
+    $clinicalCases()
+  }
+  package "Registration, administration and billing" as Administration {
+    $administrationCases()
+  }
+  Scheduling -[hidden]down- Clinical
+  Support -[hidden]down- Administration
+}
+
+$schedulingAssociations()
+$clinicalAssociations()
+$administrationAssociations()
+$schedulingRelationships()
+$clinicalRelationships()
+$administrationRelationships()
+$referralRelationship()
+$waitingListNote()
+$resourceNote()
+@enduml

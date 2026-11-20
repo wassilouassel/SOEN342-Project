@@ -1,0 +1,31 @@
+@startuml
+title SSD 4 — Join and Manage Waiting List (iteration 2)
+hide footbox
+skinparam sequenceMessageAlign center
+actor "Patient / AdministrativeStaff" as Requester
+actor AdministrativeStaff as Staff
+participant ":System" as System
+Requester -> System: searchAvailability(serviceID, professionalID?, locationID?, dateRange, specialtyID?)
+System --> Requester: [] — No availability
+Requester -> System: joinWaitingList(patientID, serviceID, locationID,\nprofessionalID?, specialtyID?, dateRange?, referralID?)
+alt valid patient, criteria, and no matching available slots
+  System --> Requester: entryID, status = waiting, priorityRank
+else invalid criteria, patient missing, or matching availability now exists
+  System --> Requester: invalidInput / notFound / availabilityExists / accessDenied
+end
+opt staff adjusts priority
+  Staff -> System: changeWaitingListPriority(entryID, priorityRank)
+  System --> Staff: entryID, priorityRank (or validation failure)
+end
+opt staff removes an entry
+  Staff -> System: removeWaitingListEntry(entryID)
+  System --> Staff: entryID, status = removed (or validation failure)
+end
+note over Requester,System
+Patient can join only for self. Staff alone changes priority/removes entries.
+At least one preference (professional, specialty, or date range) must be supplied.
+searchAvailability uses the same optional filters as SSDs 1 and 3;
+all supplied filters must match.
+Staff controls priority; no additional tie-breaking policy is specified.
+end note
+@enduml

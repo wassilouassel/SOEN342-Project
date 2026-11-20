@@ -1,0 +1,45 @@
+@startuml
+title Interaction 2 — Register Arrival (UC07; design only)
+hide footbox
+skinparam sequenceMessageAlign center
+actor AdministrativeStaff as Staff
+boundary ":ClinicCLI" as UI
+control ":ArrivalController" as Controller
+control ":AccessPolicy" as Access
+entity "appointments:AppointmentBook" as Book
+entity "a:Appointment" as Appointment
+control ":ClinicClock" as Clock
+control ":UnitOfWork" as Tx
+entity ":AuditLog" as Audit
+Staff -> UI: Select appointment and register arrival
+UI -> Controller: registerArrival(appointmentID)
+Controller -> Book: get(appointmentID)
+Book --> Controller: a (or notFound)
+Controller -> Access: requireRole(session, administrativeStaff)
+Controller -> Appointment: requireConfirmed()
+Controller -> Clock: todayAt(a.location)
+Clock --> Controller: clinicDate
+Controller -> Appointment: requireDate(clinicDate)
+Controller -> Appointment: requireNotArrived()
+Controller -> Clock: nowAt(a.location)
+Clock --> Controller: arrivalTime
+alt checks passed
+  group atomic unit of work (failure discards all staged changes)
+    Controller -> Tx: begin()
+    Controller -> Appointment: stageArrival(arrivalTime, staffID)
+    Controller -> Audit: stageRecord(actorID, patientID, registerArrival, success)
+    Controller -> Tx: commit()
+  end
+  Controller --> UI: appointmentID, arrivalTime, status = confirmed
+  UI --> Staff: Arrival registered
+else validation, authorisation, or missing appointment
+  Controller -> Audit: recordDeniedAttempt(actorID, patientID?, failureCode)
+  Controller --> UI: failureCode (original arrivalTime for alreadyArrived)
+  UI --> Staff: Show failure without changing appointment
+end
+note over Controller,Audit
+Checks fail fast in contract O05 order; no mutation occurs before validation.
+Audit/commit failure rolls back arrival and staff association (auditUnavailable/systemError).
+This is a proposed design, not implemented by the iteration-2 scheduling PoC.
+end note
+@enduml

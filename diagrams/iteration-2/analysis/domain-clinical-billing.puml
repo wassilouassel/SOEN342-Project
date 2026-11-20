@@ -1,0 +1,21 @@
+@startuml
+!include domain-model.puml
+title Domain Model — Clinical Information, Billing and Audit (focused view)
+remove $WaitingGroup
+remove $ResourcesGroup
+remove $ExternalProfessional
+remove $Specialty
+remove $ClinicLocation
+remove $MedicalService
+remove $Schedule
+remove $AvailabilitySlot
+remove $Referral
+remove $WaitingList
+remove $WaitingListEntry
+remove $Resource
+remove $ExaminationRoom
+remove $MedicalEquipment
+remove $AssistingStaffRole
+remove $ResourceRequirement
+remove $ResourceAllocation
+@enduml

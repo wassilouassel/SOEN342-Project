@@ -1,0 +1,21 @@
+@startuml
+!include use-cases-shared.iuml
+title Appointment Tracking System — Iteration II\nConsultation and clinical records
+caption Focused view 2 of 3. Shared cases are repeated for context;\nuse-cases.puml retains the complete system and every association.
+
+actor HealthcareProfessional as Professional
+
+rectangle "Appointment Tracking System" {
+  package "Consultation and clinical records" {
+    $clinicalCases()
+  }
+  package "Shared services" {
+    $supportCases()
+  }
+}
+
+$clinicalAssociations()
+$clinicalRelationships()
+$referralRelationship()
+$resourceNote()
+@enduml

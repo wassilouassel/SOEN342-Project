@@ -1,0 +1,47 @@
+@startuml
+!pragma teoz true
+title SSD 1 — Request Appointment (UC03)
+hide footbox
+skinparam sequenceMessageAlign center
+actor AdministrativeStaff as Staff
+participant ":System" as System
+note over Staff,System
+Authenticated staff books for a registered patient at the clinic or by phone.
+A Patient may use the same operations only for their own record.
+end note
+Staff -> System: searchPatient(criteria)
+alt no matching patient
+  System --> Staff: [] — No patient found
+else patient found
+  System --> Staff: matching patients (patientID, name, dateOfBirth)
+  note left of Staff: Staff chooses patientID;\nno implicit choice among matches.
+  Staff -> System: searchAvailability(serviceID, professionalID?, locationID?, dateRange, specialtyID?)
+  alt no eligible slots
+    System --> Staff: [] — No availability
+    opt patient requests a waiting-list place
+      Staff -> System: joinWaitingList(patientID, serviceID, locationID,\nprofessionalID?, specialtyID?, dateRange, referralID?)
+      System --> Staff: entryID, status = waiting (or validation failure)
+    end
+  else eligible slots exist
+    System --> Staff: slots (professionalID, dateTime, locationID)
+    Staff -> System: requestAppointment(patientID, serviceID, professionalID,\nlocationID, dateTime, referralID?, waitingListEntryID?)
+    alt all scheduling, referral and resource checks pass
+      System --> Staff: appointmentID, status = requested
+    else slot taken, outside schedule, or patient/professional overlap
+      System --> Staff: slotUnavailable
+    else required resource cannot be allocated
+      System --> Staff: resourceUnavailable
+    else referral missing or invalid
+      System --> Staff: referralRequired / referralInvalid
+    else access denied, invalid input, or audit failure
+      System --> Staff: accessDenied / invalidInput / notFound / auditUnavailable
+    end
+  end
+end
+note over Staff,System
+Search is advisory, not a reservation. Booking revalidates and reserves the
+full service interval plus required resources atomically. No automatic confirmation.
+Ordinary booking omits waitingListEntryID; SSD 5 supplies the exact accepted entry.
+A failed booking may be followed by a new search and an explicit waitlist request.
+end note
+@enduml

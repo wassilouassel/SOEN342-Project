@@ -1,0 +1,38 @@
+@startuml
+title SSD 2 — Register Arrival (UC07)
+hide footbox
+skinparam sequenceMessageAlign center
+actor AdministrativeStaff as Staff
+participant ":System" as System
+Staff -> System: searchPatient(criteria)
+alt no matching patient
+  System --> Staff: [] — No patient found
+else patient found
+  System --> Staff: matching patients (patientID, name, dateOfBirth)
+  Staff -> System: searchAppointment(patientID, date)
+  alt no appointment found
+    System --> Staff: [] — No appointment found
+  else appointments found
+    System --> Staff: appointments (appointmentID, service, professional, location,\ndateTime, status, arrivalTime)
+    note left of Staff: Staff selects appointmentID.
+    Staff -> System: registerArrival(appointmentID)
+    alt appointment missing or actor unauthorised
+      System --> Staff: notFound / accessDenied
+    else appointment not confirmed
+      System --> Staff: invalidState — Appointment not confirmed
+    else appointment not today (clinic-local date)
+      System --> Staff: wrongDate — Appointment is not today
+    else arrival already registered
+      System --> Staff: alreadyArrived, original arrivalTime
+    else audit or commit fails
+      System --> Staff: auditUnavailable / systemError
+    else arrival registered
+      System --> Staff: appointmentID, arrivalTime, status = confirmed
+    end
+  end
+end
+note over Staff,System
+Arrival is a timestamp, not a status. No Consultation is created.
+Waitlists and resources do not change this operation's contract.
+end note
+@enduml

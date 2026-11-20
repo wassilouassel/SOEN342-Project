@@ -1,0 +1,109 @@
+@startuml
+!pragma layout smetana
+title Iteration 2 — Partial Design Class Diagram (implemented scheduling PoC)
+skinparam classAttributeIconSize 0
+hide empty members
+class Main <<boundary>>
+class ClinicSystem <<controller>> {
+  +searchPatient(query)
+  +searchAvailability(serviceId, professionalId, from, to)
+  +requestAppointment(patientId, serviceId, slotId, channel, referralId)
+  +makeAvailability(schedule)
+  +importAvailability(path)
+  +exportAvailability(path)
+}
+class AvailabilityCatalog {
+  ~professional(id)
+  ~slot(id)
+  ~slots()
+  ~makeAvailability(schedule)
+  ~importRows(rows)
+  -validateNewSlots(stagedSlots)
+}
+class AppointmentBook {
+  ~professionalAvailable(slot, end)
+  ~patientAvailable(patientId, start, end)
+  ~reserve(patient, service, slot, location, channel, referralId) : Appointment
+}
+class CsvAvailabilityStore {
+  ~read(path)
+  ~write(path, slots, professionals)
+}
+class "java.time.Clock" as Clock
+package "Domain (immutable value records)" {
+  class Patient {
+    patientID
+    firstName
+    lastName
+    phoneNumber
+  }
+  class ClinicProfessional {
+    professionalID
+    firstName
+    lastName
+    title
+    specialty
+  }
+  class MedicalService {
+    serviceID
+    durationMinutes
+    requiresReferral
+  }
+  class AvailabilitySlot {
+    slotID
+    professionalID
+    date
+    startTime
+    endTime
+  }
+  class Schedule {
+    professionalID
+    dateRange
+    recurrence
+    weekdays / dayOfMonth
+    startTime / endTime
+    slotMinutes
+  }
+  class Appointment {
+    appointmentID
+    patientID
+    serviceID
+    slotID
+    status = requested
+    requestedBy = staff
+    channel = CLINIC / PHONE
+  }
+  class Referral {
+    referralID
+    patientID
+    targetProfessionalID
+    targetSpecialty
+    active
+  }
+}
+Main --> ClinicSystem
+ClinicSystem --> AvailabilityCatalog
+ClinicSystem --> AppointmentBook
+ClinicSystem --> CsvAvailabilityStore
+ClinicSystem --> Clock
+ClinicSystem o-- "0..*" Patient
+ClinicSystem o-- "0..*" MedicalService
+ClinicSystem o-- "0..*" Referral
+AvailabilityCatalog o-- "0..*" ClinicProfessional
+AvailabilityCatalog o-- "0..*" AvailabilitySlot
+AvailabilityCatalog o-- "0..*" Schedule
+AppointmentBook o-- "0..*" Appointment
+Appointment --> "1" Patient : identifies
+Appointment --> "1" MedicalService : identifies
+Appointment --> "1" AvailabilitySlot : identifies
+AvailabilitySlot --> "1" ClinicProfessional : identifies
+Schedule --> "1" ClinicProfessional : generates slots for
+Referral --> "1" Patient
+note bottom of ClinicSystem
+Public operations serialize in-memory changes.
+One clinic (America/Toronto); no automatic persistence.
+Records reference other records by identifiers, not mutable object ownership.
+Fields shown are conceptual essentials, not every Java record component.
+Clinical workflow, waitlists, resources, auth and audit are design-only.
+end note
+@enduml
